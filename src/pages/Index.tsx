@@ -7,13 +7,14 @@ import { AuthInputs } from "@/components/AuthInputs";
 import { XmlPreview } from "@/components/XmlPreview";
 import { SendStatus, SendStatusType } from "@/components/SendStatus";
 import { StepIndicator } from "@/components/StepIndicator";
-import { 
-  convertToXml, 
-  getExpectedFields, 
+import {
+  convertToXml,
+  getExpectedFields,
   mapExcelRowToType,
-  type CadastroType 
+  type CadastroType
 } from "@/utils/xmlConverter";
 import { toast } from "@/hooks/use-toast";
+import { apiRoutes, ApiRouteKey } from "@/lib/apiRoutes";
 
 const steps = [
   { number: 1, label: 'Tipo' },
@@ -25,7 +26,7 @@ const steps = [
 
 export default function Index() {
   const [currentStep, setCurrentStep] = useState(1);
-  const [selectedType, setSelectedType] = useState<CadastroType | null>(null);
+  const [selectedType, setSelectedType] = useState<ApiRouteKey | null>(null);
   const [excelData, setExcelData] = useState<Record<string, unknown>[]>([]);
   const [cnpj, setCnpj] = useState('');
   const [token, setToken] = useState('');
@@ -80,27 +81,52 @@ export default function Index() {
     setStatusMessage('Enviando XML para o servidor...');
     setStatusDetails('');
 
-    // Simulating API call - replace with actual endpoint
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Simulate success
-      setSendStatus('success');
-      setStatusMessage('XML enviado com sucesso!');
-      setStatusDetails(`${excelData.length} registro(s) processado(s)`);
-      
-      toast({
-        title: "Sucesso!",
-        description: "O XML foi enviado com sucesso.",
-      });
-    } catch (error) {
+    const xmlData = new Blob([xml], { type: "application/xml" });
+
+    if (selectedType && apiRoutes[selectedType]) {
+      try {
+        const response = await fetch(apiRoutes[selectedType], {
+          method: "POST",
+          body: xml, // string
+          headers: { "Content-Type": "text/xml; charset=utf-8" },
+        });
+
+        const responseText = await response.text();
+        console.log("Status:", response.status);
+        console.log("Response:", responseText);
+
+        if (response.ok) {
+          setSendStatus('success');
+          setStatusMessage('XML enviado com sucesso!');
+          setStatusDetails(`${excelData.length} registro(s) processado(s)`);
+
+          toast({
+            title: "Sucesso!",
+            description: "O XML foi enviado com sucesso.",
+          });
+        } else {
+          throw new Error('Erro ao enviar XML: ' + responseText);
+        }
+      } catch (error) {
+        console.error("Erro no envio:", error);
+        setSendStatus('error');
+        setStatusMessage('Erro ao enviar XML');
+        setStatusDetails(error instanceof Error ? error.message : 'Erro desconhecido');
+
+        toast({
+          title: "Erro",
+          description: "Não foi possível enviar o XML.",
+          variant: "destructive",
+        });
+      }
+    } else {
       setSendStatus('error');
       setStatusMessage('Erro ao enviar XML');
-      setStatusDetails(error instanceof Error ? error.message : 'Erro desconhecido');
-      
+      setStatusDetails('Tipo não selecionado ou rota não encontrada');
+
       toast({
         title: "Erro",
-        description: "Não foi possível enviar o XML.",
+        description: "Tipo não selecionado ou rota não encontrada.",
         variant: "destructive",
       });
     }
@@ -117,6 +143,8 @@ export default function Index() {
     setStatusMessage('');
     setStatusDetails('');
   };
+
+  const url = apiRoutes[selectedType as ApiRouteKey];
 
   return (
     <div className="min-h-screen bg-background">
@@ -285,7 +313,7 @@ export default function Index() {
               <ArrowLeft className="w-4 h-4" />
               Voltar
             </Button>
-            
+
             {currentStep < 5 && (
               <Button
                 onClick={handleNextStep}

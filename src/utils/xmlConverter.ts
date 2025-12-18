@@ -1,6 +1,11 @@
 import type { MotoristaData, ProprietarioData, VeiculoData, ParticipanteData } from "@/types/cadastro-xml";
 
-export type CadastroType = 'motorista' | 'veiculo' | 'transportador' | 'pessoa_fisica' | 'pessoa_juridica';
+export type CadastroType = 
+  'motorista' | 
+  'veiculo' | 
+  'transportador' | 
+  'pessoa_fisica' | 
+  'pessoa_juridica';
 
 function escapeXml(value: string | undefined | null): string {
   if (!value) return '';
@@ -12,21 +17,40 @@ function escapeXml(value: string | undefined | null): string {
     .replace(/'/g, '&apos;');
 }
 
+function getEnvTag(type: CadastroType): string {
+  switch (type) {
+    case "motorista": return "envMoto";
+    case "veiculo": return "envVeic";
+    case "transportador": return "envTransportador";
+    case "pessoa_fisica": return "envPessoaFisica";
+    case "pessoa_juridica": return "envPessoaJuridica";
+    default: return "env";
+  }
+}
+
 function objectToXml(obj: Record<string, unknown>, indent: string = ''): string {
   let xml = '';
-  
+
   for (const [key, value] of Object.entries(obj)) {
-    if (value === null || value === undefined || value === '') continue;
-    
+    if (
+      value === null ||
+      value === undefined ||
+      value === '' ||
+      (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0)
+    ) {
+      continue;
+    }
+
     if (typeof value === 'object' && !Array.isArray(value)) {
-      xml += `${indent}<${key}>\n`;
-      xml += objectToXml(value as Record<string, unknown>, indent + '  ');
-      xml += `${indent}</${key}>\n`;
+      const innerXml = objectToXml(value as Record<string, unknown>, indent + '  ');
+      if (innerXml.trim() !== '') {
+        xml += `${indent}<${key}>\n${innerXml}${indent}</${key}>\n`;
+      }
     } else {
       xml += `${indent}<${key}>${escapeXml(String(value))}</${key}>\n`;
     }
   }
-  
+
   return xml;
 }
 
@@ -36,48 +60,26 @@ export function convertToXml(
   cnpj: string,
   token: string
 ): string {
-  const rootTag = getRootTag(type);
-  const itemTag = getItemTag(type);
-  
+  const envTag = getEnvTag(type);
+
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml += `<${rootTag}>\n`;
-  
-  for (const item of data) {
-    xml += `  <${itemTag}>\n`;
-    xml += `    <Autentic>\n`;
-    xml += `      <xCNPJ>${escapeXml(cnpj)}</xCNPJ>\n`;
-    xml += `      <xToken>${escapeXml(token)}</xToken>\n`;
-    xml += `    </Autentic>\n`;
-    xml += objectToXml(item, '    ');
-    xml += `  </${itemTag}>\n`;
-  }
-  
-  xml += `</${rootTag}>`;
-  
+  xml += `<${envTag} versao="1.00" xmlns="http://www.controleembarque.com.br">\n`;
+  xml += `  <Autentic>\n`;
+  xml += `    <xCNPJ>${escapeXml(cnpj)}</xCNPJ>\n`;
+  xml += `    <xToken>${escapeXml(token)}</xToken>\n`;
+  xml += `  </Autentic>\n`;
+
+  // Envolva os dados em <Control>
+  xml += `  <Control>\n`;
+  xml += objectToXml(data[0], '    ');
+  xml += `  </Control>\n`;
+
+  xml += `</${envTag}>`;
+
   return xml;
 }
 
-function getRootTag(type: CadastroType): string {
-  const tags: Record<CadastroType, string> = {
-    motorista: 'Motoristas',
-    veiculo: 'Veiculos',
-    transportador: 'Transportadores',
-    pessoa_fisica: 'PessoasFisicas',
-    pessoa_juridica: 'PessoasJuridicas',
-  };
-  return tags[type];
-}
 
-function getItemTag(type: CadastroType): string {
-  const tags: Record<CadastroType, string> = {
-    motorista: 'Motorista',
-    veiculo: 'Veiculo',
-    transportador: 'Transportador',
-    pessoa_fisica: 'PessoaFisica',
-    pessoa_juridica: 'PessoaJuridica',
-  };
-  return tags[type];
-}
 
 export function getExpectedFields(type: CadastroType): string[] {
   switch (type) {
@@ -132,7 +134,7 @@ export function mapExcelRowToType(
         expedRG: row.expedRG,
         dtExpedRG: row.dtExpedRG,
         xNome: row.xNome,
-        dtNascto: row.dtNascto,
+        dtNascto: excelDateToISO(row.dtNascto),
         nomeMae: row.nomeMae,
         Sexo: row.Sexo,
         Natural: row.Natural,
@@ -148,7 +150,7 @@ export function mapExcelRowToType(
         nCNH: row.nCNH,
         nSegCNH: row.nSegCNH,
         catCNH: row.catCNH,
-        dtVencCNH: row.dtVencCNH,
+        dtVencCNH: excelDateToISO(row.dtVencCNH),
         PIS: row.PIS,
         xDocContrat: row.xDocContrat,
         tpFunc: row.tpFunc,
@@ -286,4 +288,24 @@ export function mapExcelRowToType(
     default:
       return row;
   }
+}
+
+function excelDateToISO(value: unknown): string {
+  if (typeof value === "number") {
+    // Excel date serial number to JS Date
+    const date = new Date(Math.round((value - 25569) * 86400 * 1000));
+    // Corrige fuso horário
+    const userTimezoneOffset = date.getTimezoneOffset() * 60000;
+    const localDate = new Date(date.getTime() + userTimezoneOffset);
+    return localDate.toISOString().slice(0, 10);
+  }
+  if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    // dd/mm/yyyy para yyyy-mm-dd
+    const [d, m, y] = value.split("/");
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  }
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
+  return "";
 }
