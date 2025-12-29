@@ -1,4 +1,5 @@
 import type { MotoristaData, ProprietarioData, VeiculoData, ParticipanteData } from "@/types/cadastro-xml";
+import municipios from "@/municipios.json"; // ajuste o caminho se necessário
 
 export type CadastroType = 
   'motorista' | 
@@ -21,9 +22,9 @@ function getEnvTag(type: CadastroType): string {
   switch (type) {
     case "motorista": return "envMoto";
     case "veiculo": return "envVeic";
-    case "transportador": return "envTransportador";
-    case "pessoa_fisica": return "envPessoaFisica";
-    case "pessoa_juridica": return "envPessoaJuridica";
+    case "transportador": return "envParticipante";
+    case "pessoa_fisica": return "envParticipante";
+    case "pessoa_juridica": return "envParticipante";
     default: return "env";
   }
 }
@@ -124,6 +125,10 @@ export function mapExcelRowToType(
   row: Record<string, unknown>,
   type: CadastroType
 ): Record<string, unknown> {
+  // Função auxiliar para tratar cMun
+  const resolveCMun = (nome: unknown) =>
+    typeof nome === "string" ? getCodigoIbgePorNome(nome) ?? nome : nome;
+
   switch (type) {
     case 'motorista':
       return {
@@ -145,7 +150,7 @@ export function mapExcelRowToType(
           nro: row.nro,
           xBairro: row.xBairro,
           xCpl: row.xCpl,
-          cMun: row.cMun,
+          cMun: resolveCMun(row.cMun),
         },
         nCNH: row.nCNH,
         nSegCNH: row.nSegCNH,
@@ -176,7 +181,7 @@ export function mapExcelRowToType(
         tpCar: row.tpCar,
         UF: row.UF,
         RNTRC: row.RNTRC,
-        xDocProp: row.xDocProp,
+        xDocProp: cleanDocProp(row.xDocProp),
         nEixos: row.nEixos,
         Cor: row.Cor,
         AnoFabric: row.AnoFabric,
@@ -184,7 +189,7 @@ export function mapExcelRowToType(
         Chassi: row.Chassi,
         Marca: row.Marca,
         Modelo: row.Modelo,
-        cMunEmplac: row.cMunEmplac,
+        cMunEmplac: resolveCMun(row.cMunEmplac),
         xDocAgreg: row.xDocAgreg,
         TAG: {
           xCNPJEmissor: row.xCNPJEmissor,
@@ -226,7 +231,7 @@ export function mapExcelRowToType(
           nro: row.nro,
           xBairro: row.xBairro,
           xCpl: row.xCpl,
-          cMun: row.cMun,
+          cMun: resolveCMun(row.cMun),
         },
         RNTRC: row.RNTRC,
         dtVencRNTRC: row.dtVencRNTRC,
@@ -249,7 +254,7 @@ export function mapExcelRowToType(
           xNome: row.xNome,
           dtNascto: row.dtNascto,
           Email: row.Email,
-          Telefone: row.Telefone,
+          Telefone: cleanDocProp(row.Telefone),
           Sexo: row.Sexo,
           Natural: row.Natural,
           Raca: row.Raca,
@@ -260,21 +265,21 @@ export function mapExcelRowToType(
           nro: row.nro,
           xBairro: row.xBairro,
           xCpl: row.xCpl,
-          cMun: row.cMun,
+          cMun: resolveCMun(row.cMun),
         },
       };
     case 'pessoa_juridica':
       return {
         idUsuario: row.idUsuario,
         pJuridica: {
-          xCNPJ: row.xCNPJ,
+          xCNPJ: cleanDocProp(row.xCNPJ),
           xIE: row.xIE,
           xIM: row.xIM,
           xRazaoSocial: row.xRazaoSocial,
           xNomeFant: row.xNomeFant,
           tpPart: row.tpPart,
           Email: row.Email,
-          Telefone: row.Telefone,
+          Telefone: cleanDocProp(row.Telefone),
         },
         Ender: {
           CEP: row.CEP,
@@ -282,7 +287,7 @@ export function mapExcelRowToType(
           nro: row.nro,
           xBairro: row.xBairro,
           xCpl: row.xCpl,
-          cMun: row.cMun,
+          cMun: resolveCMun(row.cMun),
         },
       };
     default:
@@ -308,4 +313,18 @@ function excelDateToISO(value: unknown): string {
     return value;
   }
   return "";
+}
+
+function cleanDocProp(value: unknown): string {
+  if (typeof value !== "string") return "";
+  // Remove espaços e caracteres especiais, mantendo apenas letras e números
+  return value.replace(/[^a-zA-Z0-9]/g, "");
+}
+
+function getCodigoIbgePorNome(nome: string): number | undefined {
+  if (!nome) return undefined;
+  const mun = (municipios as Array<{ nome: string; codigo_ibge: number }>).find(
+    m => m.nome.trim().toLowerCase() === nome.trim().toLowerCase()
+  );
+  return mun?.codigo_ibge;
 }

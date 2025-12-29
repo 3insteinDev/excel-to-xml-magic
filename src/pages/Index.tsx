@@ -30,7 +30,7 @@ export default function Index() {
   const [excelData, setExcelData] = useState<Record<string, unknown>[]>([]);
   const [cnpj, setCnpj] = useState('');
   const [token, setToken] = useState('');
-  const [xml, setXml] = useState('');
+  const [xmls, setXmls] = useState<string[]>([]);
   const [sendStatus, setSendStatus] = useState<SendStatusType>('idle');
   const [statusMessage, setStatusMessage] = useState('');
   const [statusDetails, setStatusDetails] = useState('');
@@ -44,15 +44,15 @@ export default function Index() {
       case 1: return selectedType !== null;
       case 2: return excelData.length > 0;
       case 3: return cnpj.replace(/\D/g, '').length === 14 && token.trim().length > 0;
-      case 4: return xml.trim().length > 0;
+      case 4: return xmls.length > 0 && xmls.every(x => x.trim().length > 0);
       default: return false;
     }
-  }, [currentStep, selectedType, excelData, cnpj, token, xml]);
+  }, [currentStep, selectedType, excelData, cnpj, token, xmls]);
 
   const handleTypeSelect = (type: CadastroType) => {
     setSelectedType(type);
     setExcelData([]);
-    setXml('');
+    setXmls([]);
   };
 
   const handleDataLoaded = (data: Record<string, unknown>[]) => {
@@ -63,8 +63,10 @@ export default function Index() {
     if (currentStep === 3 && selectedType && excelData.length > 0) {
       const cleanCnpj = cnpj.replace(/\D/g, '');
       const mappedData = excelData.map(row => mapExcelRowToType(row, selectedType));
-      const generatedXml = convertToXml(mappedData, selectedType, cleanCnpj, token);
-      setXml(generatedXml);
+      const generatedXmls = mappedData.map(data =>
+        convertToXml([data], selectedType, cleanCnpj, token)
+      );
+      setXmls(generatedXmls);
     }
     setCurrentStep(prev => Math.min(prev + 1, 5));
   };
@@ -76,46 +78,40 @@ export default function Index() {
     }
   };
 
+  const handleXmlChange = (index: number, newXml: string) => {
+    setXmls(prev => prev.map((xml, i) => (i === index ? newXml : xml)));
+  };
+
   const handleSend = async () => {
     setSendStatus('sending');
     setStatusMessage('Enviando XML para o servidor...');
     setStatusDetails('');
 
-    const xmlData = new Blob([xml], { type: "application/xml" });
-
     if (selectedType && apiRoutes[selectedType]) {
       try {
-        const response = await fetch(apiRoutes[selectedType], {
-          method: "POST",
-          body: xml, // string
-          headers: { "Content-Type": "text/xml; charset=utf-8" },
-        });
-
-        const responseText = await response.text();
-        console.log("Status:", response.status);
-        console.log("Response:", responseText);
-
-        if (response.ok) {
-          setSendStatus('success');
-          setStatusMessage('XML enviado com sucesso!');
-          setStatusDetails(`${excelData.length} registro(s) processado(s)`);
-
-          toast({
-            title: "Sucesso!",
-            description: "O XML foi enviado com sucesso.",
+        let successCount = 0;
+        for (const xml of xmls) {
+          const response = await fetch(apiRoutes[selectedType], {
+            method: "POST",
+            body: xml,
+            headers: { "Content-Type": "text/xml; charset=utf-8" },
           });
-        } else {
-          throw new Error('Erro ao enviar XML: ' + responseText);
+          if (response.ok) successCount++;
         }
+        setSendStatus('success');
+        setStatusMessage('XML(s) enviado(s) com sucesso!');
+        setStatusDetails(`${successCount} de ${xmls.length} registro(s) processado(s)`);
+        toast({
+          title: "Sucesso!",
+          description: "Todos os XMLs foram enviados.",
+        });
       } catch (error) {
-        console.error("Erro no envio:", error);
         setSendStatus('error');
         setStatusMessage('Erro ao enviar XML');
         setStatusDetails(error instanceof Error ? error.message : 'Erro desconhecido');
-
         toast({
           title: "Erro",
-          description: "Não foi possível enviar o XML.",
+          description: "Não foi possível enviar todos os XMLs.",
           variant: "destructive",
         });
       }
@@ -123,7 +119,6 @@ export default function Index() {
       setSendStatus('error');
       setStatusMessage('Erro ao enviar XML');
       setStatusDetails('Tipo não selecionado ou rota não encontrada');
-
       toast({
         title: "Erro",
         description: "Tipo não selecionado ou rota não encontrada.",
@@ -138,7 +133,7 @@ export default function Index() {
     setExcelData([]);
     setCnpj('');
     setToken('');
-    setXml('');
+    setXmls([]);
     setSendStatus('idle');
     setStatusMessage('');
     setStatusDetails('');
@@ -239,10 +234,10 @@ export default function Index() {
                   Preview do XML
                 </h2>
                 <p className="text-muted-foreground">
-                  Revise e edite o XML antes de enviar
+                  Revise e edite cada XML antes de enviar
                 </p>
               </div>
-              <XmlPreview xml={xml} onXmlChange={setXml} />
+              <XmlPreview xmls={xmls} onXmlChange={handleXmlChange} />
             </div>
           )}
 

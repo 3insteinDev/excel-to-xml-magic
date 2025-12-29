@@ -10,7 +10,9 @@ export default defineConfig(({ mode }) => ({
     port: 3010,
     proxy: {
       '/webapi': {
-        target: 'http://homolog.controleembarque.com.br',
+        target: 'http://controleembarque.com.br',
+        // target: 'http://homolog.controleembarque.com.br',
+        // target: 'http://desenv.controleembarque.com.br',
         changeOrigin: true,
         secure: false,
       },

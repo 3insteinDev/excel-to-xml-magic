@@ -1,17 +1,21 @@
 import { useState } from "react";
-import { Code, Edit3, Eye, Copy, Check } from "lucide-react";
+import { Code, Edit3, Eye, Copy, Check, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 
 interface XmlPreviewProps {
-  xml: string;
-  onXmlChange: (xml: string) => void;
+  xmls: string[];
+  onXmlChange: (index: number, xml: string) => void;
 }
 
-export function XmlPreview({ xml, onXmlChange }: XmlPreviewProps) {
+export function XmlPreview({ xmls, onXmlChange }: XmlPreviewProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [page, setPage] = useState(0);
+
+  const xml = xmls[page] || "";
+  const lineCount = xml.split('\n').length;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(xml);
@@ -23,7 +27,10 @@ export function XmlPreview({ xml, onXmlChange }: XmlPreviewProps) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const lineCount = xml.split('\n').length;
+  const handlePageChange = (newPage: number) => {
+    setIsEditing(false);
+    setPage(newPage);
+  };
 
   return (
     <div className="animate-fade-in space-y-4">
@@ -79,11 +86,34 @@ export function XmlPreview({ xml, onXmlChange }: XmlPreviewProps) {
         </div>
       </div>
 
+      {/* Paginação */}
+      <div className="flex items-center justify-center gap-2 mb-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handlePageChange(page - 1)}
+          disabled={page === 0}
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </Button>
+        <span className="text-sm">
+          {page + 1} / {xmls.length}
+        </span>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => handlePageChange(page + 1)}
+          disabled={page === xmls.length - 1}
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+
       <div className="relative rounded-xl border border-border overflow-hidden bg-card">
         {isEditing ? (
           <Textarea
             value={xml}
-            onChange={(e) => onXmlChange(e.target.value)}
+            onChange={(e) => onXmlChange(page, e.target.value)}
             className="min-h-[400px] font-mono text-sm bg-transparent border-0 resize-none focus-visible:ring-0"
             spellCheck={false}
           />

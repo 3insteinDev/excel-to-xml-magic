@@ -2,9 +2,9 @@
 export const apiRoutes = {
   motorista: "/webapi/cadastro/motorista",
   veiculo: "/webapi/cadastro/veiculo",
-  transportador: "/webapi/cadastro/transportador",
-  pessoa_fisica: "/webapi/cadastro/pessoa_fisica",
-  pessoa_juridica: "/webapi/cadastro/pessoa_juridica",
+  transportador: "/webapi/cadastro/participante",
+  pessoa_fisica: "/webapi/cadastro/participante",
+  pessoa_juridica: "/webapi/cadastro/participante",
 } as const;
 
 export type ApiRouteKey = keyof typeof apiRoutes;
