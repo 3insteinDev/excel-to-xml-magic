@@ -5,7 +5,7 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
-  //base: '/front_conversor_excel',
+  base: '/front_conversor_excel',
   server: {
     host: "::",
     port: 3010,
