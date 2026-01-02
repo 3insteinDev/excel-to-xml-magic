@@ -1,5 +1,5 @@
 // src/lib/apiRoutes.ts
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3100';
 
 export const apiRoutes = {
   motorista: `${BACKEND_URL}/api/proxy/webapi/cadastro/motorista`,
