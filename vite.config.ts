@@ -5,18 +5,10 @@ import { componentTagger } from "lovable-tagger";
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
+  //base: '/front_conversor_excel',
   server: {
     host: "::",
     port: 3010,
-    proxy: {
-      '/webapi': {
-        target: 'http://controleembarque.com.br',
-        // target: 'http://homolog.controleembarque.com.br',
-        // target: 'http://desenv.controleembarque.com.br',
-        changeOrigin: true,
-        secure: false,
-      },
-    },
   },
   plugins: [react(), mode === "development" && componentTagger()].filter(Boolean),
   resolve: {

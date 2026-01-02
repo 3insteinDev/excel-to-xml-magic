@@ -22,7 +22,7 @@ function getEnvTag(type: CadastroType): string {
   switch (type) {
     case "motorista": return "envMoto";
     case "veiculo": return "envVeic";
-    case "transportador": return "envParticipante";
+    case "transportador": return "envProprietario";
     case "pessoa_fisica": return "envParticipante";
     case "pessoa_juridica": return "envParticipante";
     default: return "env";
@@ -32,7 +32,25 @@ function getEnvTag(type: CadastroType): string {
 function objectToXml(obj: Record<string, unknown>, indent: string = ''): string {
   let xml = '';
 
-  for (const [key, value] of Object.entries(obj)) {
+  // Ordem fixa para transportador
+  const transportadorOrder = [
+    'idUsuario',
+    'pFisica',
+    'pJuridica',
+    'Ender',
+    'RNTRC',
+    'dtVencRNTRC',
+    'tpProp',
+    'Cartao',
+  ];
+  const keys =
+    obj && obj.__forceTransportadorOrder
+      ? transportadorOrder.filter(k => k in obj).concat(Object.keys(obj).filter(k => !transportadorOrder.includes(k) && k !== '__forceTransportadorOrder'))
+      : Object.keys(obj);
+
+  for (const key of keys) {
+    if (key === '__forceTransportadorOrder') continue;
+    const value = obj[key];
     if (
       value === null ||
       value === undefined ||
@@ -41,7 +59,6 @@ function objectToXml(obj: Record<string, unknown>, indent: string = ''): string 
     ) {
       continue;
     }
-
     if (typeof value === 'object' && !Array.isArray(value)) {
       const innerXml = objectToXml(value as Record<string, unknown>, indent + '  ');
       if (innerXml.trim() !== '') {
@@ -72,7 +89,11 @@ export function convertToXml(
 
   // Envolva os dados em <Control>
   xml += `  <Control>\n`;
-  xml += objectToXml(data[0], '    ');
+  let obj = data[0];
+  if (type === 'transportador') {
+    obj = { ...obj, __forceTransportadorOrder: true };
+  }
+  xml += objectToXml(obj, '    ');
   xml += `  </Control>\n`;
 
   xml += `</${envTag}>`;
@@ -196,35 +217,10 @@ export function mapExcelRowToType(
           nTAG: row.nTAG,
         },
       };
-    case 'transportador':
-      return {
+    case 'transportador': {
+      const tipoPessoa = row.tipoPessoa;
+      const comuns = {
         idUsuario: row.idUsuario,
-        pFisica: {
-          CPF: row.CPF,
-          RG: row.RG,
-          ufRG: row.ufRG,
-          expedRG: row.expedRG,
-          dtExpedRG: row.dtExpedRG,
-          xNome: row.xNome,
-          dtNascto: row.dtNascto,
-          Email: row.Email,
-          qtdDepend: row.qtdDepend,
-          Telefone: row.Telefone,
-          Sexo: row.Sexo,
-          Natural: row.Natural,
-          Raca: row.Raca,
-        },
-        pJuridica: {
-          xCNPJ: row.xCNPJEmpresa,
-          xIE: row.xIE,
-          xIM: row.xIM,
-          xRazaoSocial: row.xRazaoSocial,
-          xNomeFant: row.xNomeFant,
-          tpPart: row.tpPart,
-          Email: row.EmailEmpresa,
-          Telefone: row.TelefoneEmpresa,
-          tpEmpresa: row.tpEmpresa,
-        },
         Ender: {
           CEP: row.CEP,
           xLgr: row.xLgr,
@@ -234,7 +230,7 @@ export function mapExcelRowToType(
           cMun: resolveCMun(row.cMun),
         },
         RNTRC: row.RNTRC,
-        dtVencRNTRC: row.dtVencRNTRC,
+        dtVencRNTRC: excelDateToISO(row.dtVencRNTRC),
         tpProp: row.tpProp,
         Cartao: {
           tpCartao: row.tpCartao,
@@ -242,6 +238,45 @@ export function mapExcelRowToType(
           tpOpera: row.tpOpera,
         },
       };
+      if (tipoPessoa === 1 || tipoPessoa === '1') {
+        return {
+          ...comuns,
+          pFisica: {
+            CPF: row.CPF,
+            RG: row.RG,
+            ufRG: row.ufRG,
+            expedRG: row.expedRG,
+            dtExpedRG: row.dtExpedRG,
+            xNome: row.xNome,
+            dtNascto: row.dtNascto,
+            Email: row.Email,
+            qtdDepend: row.qtdDepend,
+            Telefone: cleanDocProp(row.Telefone),
+            Sexo: row.Sexo,
+            Natural: row.Natural,
+            Raca: row.Raca,
+          },
+        };
+      } else if (tipoPessoa === 2 || tipoPessoa === '2') {
+        return {
+          ...comuns,
+          pJuridica: {
+            xCNPJ: cleanDocProp(row.xCNPJEmpresa),
+            xIE: row.xIE,
+            xIM: row.xIM,
+            xRazaoSocial: row.xRazaoSocial,
+            xNomeFant: row.xNomeFant,
+            tpPart: row.tpPart,
+            Email: row.EmailEmpresa,
+            Telefone: cleanDocProp(row.TelefoneEmpresa),
+            tpEmpresa: row.tpEmpresa,
+          },
+        };
+      } else {
+        // Se não for 1 nem 2, retorna apenas campos comuns
+        return comuns;
+      }
+    }
     case 'pessoa_fisica':
       return {
         idUsuario: row.idUsuario,
@@ -280,6 +315,7 @@ export function mapExcelRowToType(
           tpPart: row.tpPart,
           Email: row.Email,
           Telefone: cleanDocProp(row.Telefone),
+          RNTRC: row.RNTRC,
         },
         Ender: {
           CEP: row.CEP,
