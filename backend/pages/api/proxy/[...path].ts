@@ -1,6 +1,7 @@
 // pages/api/proxy/[...path].ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 
+// const BASE_URL = 'http://controleembarque.com.br';
 const BASE_URL = 'http://homolog.controleembarque.com.br';
 
 export default async function handler(

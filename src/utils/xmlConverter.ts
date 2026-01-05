@@ -154,7 +154,7 @@ export function mapExcelRowToType(
     case 'motorista':
       return {
         idUsuario: row.idUsuario,
-        CPF: row.CPF,
+        CPF: cleanDocProp(row.CPF),
         RG: row.RG,
         ufRG: row.ufRG,
         expedRG: row.expedRG,
@@ -181,7 +181,7 @@ export function mapExcelRowToType(
         xDocContrat: row.xDocContrat,
         tpFunc: row.tpFunc,
         Email: row.Email,
-        Telefone: row.Telefone,
+        Telefone: cleanDocProp(row.Telefone),
         Cartao: {
           tpCartao: row.tpCartao,
           nCartao: row.nCartao,
