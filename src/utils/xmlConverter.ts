@@ -1,5 +1,6 @@
 import type { MotoristaData, ProprietarioData, VeiculoData, ParticipanteData } from "@/types/cadastro-xml";
 import municipios from "@/municipios.json"; // ajuste o caminho se necessário
+import placasTexto from "@/placas-cadastrar.txt?raw";
 
 export type CadastroType = 
   'motorista' | 
@@ -7,6 +8,36 @@ export type CadastroType =
   'transportador' | 
   'pessoa_fisica' | 
   'pessoa_juridica';
+
+// Cache das placas válidas
+let placasValidas: Set<string> | null = null;
+
+// Função para carregar placas do arquivo
+export function loadPlacasValidas(): Set<string> {
+  if (placasValidas) {
+    return placasValidas;
+  }
+  
+  try {
+    const placas = placasTexto
+      .split('\n')
+      .map(line => line.trim().toUpperCase())
+      .filter(line => line.length > 0);
+    placasValidas = new Set(placas);
+    console.log(`Carregadas ${placasValidas.size} placas válidas`);
+    return placasValidas;
+  } catch (error) {
+    console.error('Erro ao carregar placas:', error);
+    return new Set();
+  }
+}
+
+// Função para verificar se uma placa é válida
+export function isPlacaValida(placa: string, placasSet: Set<string>): boolean {
+  if (!placa) return false;
+  const placaLimpa = placa.toString().trim().toUpperCase();
+  return placasSet.has(placaLimpa);
+}
 
 function escapeXml(value: string | undefined | null): string {
   if (!value) return '';
@@ -54,7 +85,7 @@ function objectToXml(obj: Record<string, unknown>, indent: string = ''): string 
     if (
       value === null ||
       value === undefined ||
-      value === '' ||
+      (typeof value === 'string' && value === '') ||
       (typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0)
     ) {
       continue;
@@ -158,7 +189,7 @@ export function mapExcelRowToType(
         RG: row.RG,
         ufRG: row.ufRG,
         expedRG: row.expedRG,
-        dtExpedRG: row.dtExpedRG,
+        dtExpedRG: excelDateToISO(row.dtExpedRG),
         xNome: row.xNome,
         dtNascto: excelDateToISO(row.dtNascto),
         nomeMae: row.nomeMae,
@@ -168,7 +199,7 @@ export function mapExcelRowToType(
         Ender: {
           CEP: row.CEP,
           xLgr: row.xLgr,
-          nro: row.nro,
+          nro: resolveNum(row.nro),
           xBairro: row.xBairro,
           xCpl: row.xCpl,
           cMun: resolveCMun(row.cMun),
@@ -194,7 +225,7 @@ export function mapExcelRowToType(
         idUsuario: row.idUsuario,
         tpVeic: row.tpVeic,
         placa: row.placa,
-        RENAVAM: row.RENAVAM,
+        RENAVAM: formatRenavam(row.RENAVAM),
         tara: row.tara,
         capKG: row.capKG,
         capM3: row.capM3,
@@ -224,7 +255,7 @@ export function mapExcelRowToType(
         Ender: {
           CEP: row.CEP,
           xLgr: row.xLgr,
-          nro: row.nro,
+          nro: resolveNum(row.nro),
           xBairro: row.xBairro,
           xCpl: row.xCpl,
           cMun: resolveCMun(row.cMun),
@@ -264,8 +295,8 @@ export function mapExcelRowToType(
             xCNPJ: cleanDocProp(row.xCNPJEmpresa),
             xIE: row.xIE,
             xIM: row.xIM,
-            xRazaoSocial: row.xRazaoSocial,
-            xNomeFant: row.xNomeFant,
+            xRazaoSocial: truncateString(row.xRazaoSocial, 100),
+            xNomeFant: truncateString(row.xNomeFant, 100),
             tpPart: row.tpPart,
             Email: row.EmailEmpresa,
             Telefone: cleanDocProp(row.TelefoneEmpresa),
@@ -320,7 +351,7 @@ export function mapExcelRowToType(
         Ender: {
           CEP: row.CEP,
           xLgr: row.xLgr,
-          nro: row.nro,
+          nro: resolveNum(row.nro),
           xBairro: row.xBairro,
           xCpl: row.xCpl,
           cMun: resolveCMun(row.cMun),
@@ -351,10 +382,33 @@ function excelDateToISO(value: unknown): string {
   return "";
 }
 
+function resolveNum(value: unknown): string {
+  if (value === "" || value === null || value === undefined) {
+    return "SN";
+  }
+  return String(value);
+}
+
 function cleanDocProp(value: unknown): string {
   if (typeof value !== "string") return "";
-  // Remove espaços e caracteres especiais, mantendo apenas letras e números
   return value.replace(/[^a-zA-Z0-9]/g, "");
+}
+
+function formatRenavam(value: unknown): string {
+  if (!value) return "";
+  const renavam = String(value).replace(/\D/g, "");
+  
+  if (renavam.length === 9 || renavam.length === 10) {
+    return renavam.padStart(11, "0");
+  }
+  
+  return renavam;
+}
+
+function truncateString(value: unknown, maxLength: number): string {
+  if (typeof value !== "string") return "";
+  const cleaned = value.trim().replace(/\s+/g, ' ');
+  return cleaned.length > maxLength ? cleaned.substring(0, maxLength).trim() : cleaned;
 }
 
 function getCodigoIbgePorNome(nome: string): number | undefined {

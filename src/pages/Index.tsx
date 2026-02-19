@@ -11,6 +11,8 @@ import {
   convertToXml,
   getExpectedFields,
   mapExcelRowToType,
+  loadPlacasValidas,
+  isPlacaValida,
   type CadastroType
 } from "@/utils/xmlConverter";
 import { toast } from "@/hooks/use-toast";
@@ -63,7 +65,31 @@ export default function Index() {
     if (currentStep === 3 && selectedType && excelData.length > 0) {
       const cleanCnpj = cnpj.replace(/\D/g, '');
       const mappedData = excelData.map(row => mapExcelRowToType(row, selectedType));
-      const generatedXmls = mappedData.map(data =>
+      
+      // Se for tipo veículo, filtrar por placas válidas
+      let filteredData = mappedData;
+      if (selectedType === 'veiculo') {
+        const placasSet = loadPlacasValidas();
+        filteredData = mappedData.filter(data => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const placa = (data as any).placa;
+          return isPlacaValida(placa, placasSet);
+        });
+        
+        const totalVeiculos = mappedData.length;
+        const veiculosFiltrados = filteredData.length;
+        const veiculosIgnorados = totalVeiculos - veiculosFiltrados;
+        
+        if (veiculosIgnorados > 0) {
+          toast({
+            title: "Placas filtradas",
+            description: `${veiculosIgnorados} veículo(s) ignorado(s) - placa não encontrada no arquivo de cadastro.`,
+            variant: "default",
+          });
+        }
+      }
+      
+      const generatedXmls = filteredData.map(data =>
         convertToXml([data], selectedType, cleanCnpj, token)
       );
       setXmls(generatedXmls);

@@ -3,10 +3,9 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3100';
 
 export const apiRoutes = {
   motorista: `${BACKEND_URL}/api/proxy/webapi/cadastro/motorista`,
-  //usar essa rota abaixo para cadastro de motorista quando o tipo funcionario for === 1, proprio motorista, assim não vincula o doc contratante
   // motorista: `https://desenv.controleembarque.com.br/api-integracoes-teste-local/cadastro/motorista`,
   veiculo: `${BACKEND_URL}/api/proxy/webapi/cadastro/veiculo`,
-  transportador: `${BACKEND_URL}/api/proxy/webapi/cadastro/participante`,
+  transportador: `${BACKEND_URL}/api/proxy/webapi/cadastro/proprietario`,
   pessoa_fisica: `${BACKEND_URL}/api/proxy/webapi/cadastro/participante`,
   pessoa_juridica: `${BACKEND_URL}/api/proxy/webapi/cadastro/participante`,
 } as const;
