@@ -1,5 +1,6 @@
 import type { MotoristaData, ProprietarioData, VeiculoData, ParticipanteData } from "@/types/cadastro-xml";
 import municipios from "@/municipios.json"; // ajuste o caminho se necessário
+import estados from "@/estados.json";
 import placasTexto from "@/placas-cadastrar.txt?raw";
 
 export type CadastroType = 
@@ -47,6 +48,42 @@ function escapeXml(value: string | undefined | null): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&apos;');
+}
+
+/**
+ * Formata o número da CNH garantindo 11 dígitos
+ * Completa com zeros à esquerda se necessário
+ * @param nCNH - Número da CNH (string ou número)
+ * @returns CNH formatada com 11 dígitos
+ */
+export function formatNCNH(nCNH: unknown): string {
+  if (!nCNH) return '';
+  const digits = String(nCNH).trim().replace(/\D/g, '');
+  return digits.padStart(11, '0');
+}
+
+/**
+ * Formata o número do CPF garantindo 11 dígitos
+ * Completa com zeros à esquerda se necessário
+ * @param cpf - Número do CPF (string ou número)
+ * @returns CPF formatado com 11 dígitos
+ */
+export function formatCPF(cpf: unknown): string {
+  if (!cpf) return '00000000000';
+  const digits = String(cpf).trim().replace(/\D/g, '');
+  return digits.padStart(11, '0');
+}
+
+/**
+ * Formata o número do CEP garantindo 8 dígitos
+ * Completa com zeros à esquerda se necessário
+ * @param cep - Número do CEP (string ou número)
+ * @returns CEP formatado com 8 dígitos
+ */
+export function formatCEP(cep: unknown): string {
+  if (!cep) return '';
+  const digits = String(cep).trim().replace(/\D/g, '');
+  return digits.padStart(8, '0');
 }
 
 function getEnvTag(type: CadastroType): string {
@@ -185,29 +222,29 @@ export function mapExcelRowToType(
     case 'motorista':
       return {
         idUsuario: row.idUsuario,
-        CPF: cleanDocProp(row.CPF),
+        CPF: formatCPF(cleanDocProp(row.CPF)),
         RG: row.RG,
-        ufRG: row.ufRG,
+        ufRG: getCodigoIbgeUf(row.ufRG as string | number),
         expedRG: row.expedRG,
         dtExpedRG: excelDateToISO(row.dtExpedRG),
-        xNome: row.xNome,
+        xNome: preserveTextSpaces(row.xNome),
         dtNascto: excelDateToISO(row.dtNascto),
         nomeMae: row.nomeMae,
         Sexo: row.Sexo,
         Natural: row.Natural,
-        dtPrimHabilit: row.dtPrimHabilit,
         Ender: {
-          CEP: row.CEP,
-          xLgr: row.xLgr,
+          CEP: formatCEP(cleanDocProp(row.CEP)),
+          xLgr: preserveTextSpaces(row.xLgr),
           nro: resolveNum(row.nro),
-          xBairro: row.xBairro,
-          xCpl: row.xCpl,
+          xBairro: preserveTextSpaces(row.xBairro),
+          xCpl: preserveTextSpaces(row.xCpl),
           cMun: resolveCMun(row.cMun),
         },
-        nCNH: row.nCNH,
+        nCNH: formatNCNH(row.nCNH),
         nSegCNH: row.nSegCNH,
         catCNH: row.catCNH,
         dtVencCNH: excelDateToISO(row.dtVencCNH),
+        dtPrimHabilit: excelDateToISO(row.dtPrimHabilit) ,
         PIS: row.PIS,
         xDocContrat: row.xDocContrat,
         tpFunc: row.tpFunc,
@@ -231,7 +268,7 @@ export function mapExcelRowToType(
         capM3: row.capM3,
         tpRod: row.tpRod,
         tpCar: row.tpCar,
-        UF: row.UF,
+        UF: getCodigoIbgeUf(row.UF as string | number),
         RNTRC: row.RNTRC,
         xDocProp: cleanDocProp(row.xDocProp),
         nEixos: row.nEixos,
@@ -253,11 +290,11 @@ export function mapExcelRowToType(
       const comuns = {
         idUsuario: row.idUsuario,
         Ender: {
-          CEP: row.CEP,
-          xLgr: row.xLgr,
+          CEP: formatCEP(cleanDocProp(row.CEP)),
+          xLgr: preserveTextSpaces(row.xLgr),
           nro: resolveNum(row.nro),
-          xBairro: row.xBairro,
-          xCpl: row.xCpl,
+          xBairro: preserveTextSpaces(row.xBairro),
+          xCpl: preserveTextSpaces(row.xCpl),
           cMun: resolveCMun(row.cMun),
         },
         RNTRC: row.RNTRC,
@@ -273,12 +310,12 @@ export function mapExcelRowToType(
         return {
           ...comuns,
           pFisica: {
-            CPF: row.CPF,
+            CPF: formatCPF(cleanDocProp(row.CPF)),
             RG: row.RG,
-            ufRG: row.ufRG,
+            ufRG: getCodigoIbgeUf(row.ufRG as string | number),
             expedRG: row.expedRG,
             dtExpedRG: row.dtExpedRG,
-            xNome: row.xNome,
+            xNome: preserveTextSpaces(row.xNome),
             dtNascto: row.dtNascto,
             Email: row.Email,
             qtdDepend: row.qtdDepend,
@@ -312,12 +349,12 @@ export function mapExcelRowToType(
       return {
         idUsuario: row.idUsuario,
         pFisica: {
-          CPF: row.CPF,
+          CPF: formatCPF(cleanDocProp(row.CPF)),
           RG: row.RG,
-          ufRG: row.ufRG,
+          ufRG: getCodigoIbgeUf(row.ufRG as string | number),
           expedRG: row.expedRG,
           dtExpedRG: row.dtExpedRG,
-          xNome: row.xNome,
+          xNome: preserveTextSpaces(row.xNome),
           dtNascto: row.dtNascto,
           Email: row.Email,
           Telefone: cleanDocProp(row.Telefone),
@@ -326,11 +363,11 @@ export function mapExcelRowToType(
           Raca: row.Raca,
         },
         Ender: {
-          CEP: row.CEP,
-          xLgr: row.xLgr,
-          nro: row.nro,
-          xBairro: row.xBairro,
-          xCpl: row.xCpl,
+          CEP: formatCEP(cleanDocProp(row.CEP)),
+          xLgr: preserveTextSpaces(row.xLgr),
+          nro: resolveNum(row.nro),
+          xBairro: preserveTextSpaces(row.xBairro),
+          xCpl: preserveTextSpaces(row.xCpl),
           cMun: resolveCMun(row.cMun),
         },
       };
@@ -349,11 +386,11 @@ export function mapExcelRowToType(
           RNTRC: row.RNTRC,
         },
         Ender: {
-          CEP: row.CEP,
-          xLgr: row.xLgr,
+          CEP: formatCEP(cleanDocProp(row.CEP)),
+          xLgr: preserveTextSpaces(row.xLgr),
           nro: resolveNum(row.nro),
-          xBairro: row.xBairro,
-          xCpl: row.xCpl,
+          xBairro: preserveTextSpaces(row.xBairro),
+          xCpl: preserveTextSpaces(row.xCpl),
           cMun: resolveCMun(row.cMun),
         },
       };
@@ -362,24 +399,31 @@ export function mapExcelRowToType(
   }
 }
 
-function excelDateToISO(value: unknown): string {
+function excelDateToISO(value: unknown, format: 'yyyy-mm-dd' | 'dd/mm/yyyy' = 'yyyy-mm-dd'): string {
+  let year: string, month: string, day: string;
   if (typeof value === "number") {
     // Excel date serial number to JS Date
     const date = new Date(Math.round((value - 25569) * 86400 * 1000));
     // Corrige fuso horário
     const userTimezoneOffset = date.getTimezoneOffset() * 60000;
     const localDate = new Date(date.getTime() + userTimezoneOffset);
-    return localDate.toISOString().slice(0, 10);
+    year = String(localDate.getFullYear());
+    month = String(localDate.getMonth() + 1).padStart(2, '0');
+    day = String(localDate.getDate()).padStart(2, '0');
+  } else if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+    // dd/mm/yyyy
+    [day, month, year] = value.split("/");
+  } else if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    // yyyy-mm-dd
+    [year, month, day] = value.split("-");
+  } else {
+    return "";
   }
-  if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-    // dd/mm/yyyy para yyyy-mm-dd
-    const [d, m, y] = value.split("/");
-    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
+  if (format === 'yyyy-mm-dd') {
+    return `${year}-${month}-${day}`;
+  } else {
+    return `${day}/${month}/${year}`;
   }
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    return value;
-  }
-  return "";
 }
 
 function resolveNum(value: unknown): string {
@@ -390,18 +434,17 @@ function resolveNum(value: unknown): string {
 }
 
 function cleanDocProp(value: unknown): string {
-  if (typeof value !== "string") return "";
+  if (typeof value !== "string") return value ? String(value) : "";
   return value.replace(/[^a-zA-Z0-9]/g, "");
 }
 
 function formatRenavam(value: unknown): string {
   if (!value) return "";
   const renavam = String(value).replace(/\D/g, "");
-  
-  if (renavam.length === 9 || renavam.length === 10) {
+  // Preenche com zeros à esquerda até 11 caracteres, se tiver menos de 11
+  if (renavam.length < 11) {
     return renavam.padStart(11, "0");
   }
-  
   return renavam;
 }
 
@@ -411,10 +454,44 @@ function truncateString(value: unknown, maxLength: number): string {
   return cleaned.length > maxLength ? cleaned.substring(0, maxLength).trim() : cleaned;
 }
 
+function preserveTextSpaces(value: unknown, maxLength?: number): string {
+  if (typeof value !== "string") return "";
+  // Normaliza espaços múltiplos para um único espaço
+  // Remove apenas espaços do final com trimEnd(), preservando espaços do início e meio
+  const cleaned = value.replace(/\s+/g, ' ').trimEnd();
+  return maxLength && cleaned.length > maxLength ? cleaned.substring(0, maxLength) : cleaned;
+}
+
 function getCodigoIbgePorNome(nome: string): number | undefined {
   if (!nome) return undefined;
   const mun = (municipios as Array<{ nome: string; codigo_ibge: number }>).find(
     m => m.nome.trim().toLowerCase() === nome.trim().toLowerCase()
   );
   return mun?.codigo_ibge;
+}
+
+/**
+ * Retorna o código IBGE do estado baseado na sigla ou valida se já é um código
+ * @param uf - Sigla do estado (SP) ou código IBGE (35)
+ * @returns Código IBGE do estado ou undefined se não encontrado
+ */
+export function getCodigoIbgeUf(uf: string | number): number | undefined {
+  if (!uf) return undefined;
+  
+  const ufStr = String(uf).trim().toUpperCase();
+  const ufNum = parseInt(ufStr, 10);
+  
+  // Se é um número válido, verifica se existe um estado com esse código
+  if (!isNaN(ufNum)) {
+    const estado = (estados as Array<{ id: number; sigla: string }>).find(
+      e => e.id === ufNum
+    );
+    return estado?.id;
+  }
+  
+  // Se é uma sigla (SP, MG, RJ, etc.), procura pelo id
+  const estado = (estados as Array<{ id: number; sigla: string }>).find(
+    e => e.sigla === ufStr
+  );
+  return estado?.id;
 }
