@@ -75,6 +75,19 @@ export function formatCPF(cpf: unknown): string {
 }
 
 /**
+ * Formata o número do PIS garantindo 11 dígitos
+ * Completa com zeros à esquerda se necessário
+ * @param pis - Número do PIS (string ou número)
+ * @returns PIS formatado com 11 dígitos ou string vazia se não informado
+ */
+export function formatPIS(pis: unknown): string {
+  if (!pis) return '';
+  const digits = String(pis).trim().replace(/\D/g, '');
+  if (!digits) return '';
+  return digits.padStart(11, '0');
+}
+
+/**
  * Formata o número do CEP garantindo 8 dígitos
  * Completa com zeros à esquerda se necessário
  * @param cep - Número do CEP (string ou número)
@@ -245,7 +258,7 @@ export function mapExcelRowToType(
         catCNH: row.catCNH,
         dtVencCNH: excelDateToISO(row.dtVencCNH),
         dtPrimHabilit: excelDateToISO(row.dtPrimHabilit) ,
-        PIS: row.PIS,
+        PIS: formatPIS(row.PIS),
         xDocContrat: row.xDocContrat,
         tpFunc: row.tpFunc,
         Email: row.Email,
@@ -269,7 +282,7 @@ export function mapExcelRowToType(
         tpRod: row.tpRod,
         tpCar: row.tpCar,
         UF: getCodigoIbgeUf(row.UF as string | number),
-        RNTRC: row.RNTRC,
+        RNTRC: formatRNTRC(row.RNTRC),
         xDocProp: cleanDocProp(row.xDocProp),
         nEixos: row.nEixos,
         Cor: row.Cor,
@@ -446,6 +459,16 @@ function formatRenavam(value: unknown): string {
     return renavam.padStart(11, "0");
   }
   return renavam;
+}
+
+function formatRNTRC(value: unknown): string {
+  if (!value) return "";
+  const rntrc = String(value).replace(/\D/g, "");
+  // Preenche com zeros à esquerda até 8 caracteres, se tiver menos de 8
+  if (rntrc.length < 8) {
+    return rntrc.padStart(8, "0");
+  }
+  return rntrc;
 }
 
 function truncateString(value: unknown, maxLength: number): string {
